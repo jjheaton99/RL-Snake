@@ -1,8 +1,7 @@
 import numpy as np
-from time import sleep
 
 class SnakeGameLogic:
-    def __init__(self, grid_size=(90, 160)):
+    def __init__(self, grid_size=(20, 30)):
         self.grid_size = grid_size
         self.grid = np.zeros(grid_size)
         self.ate_food = False
@@ -23,6 +22,9 @@ class SnakeGameLogic:
         Snake is represented as a list of coordinates of body segments
         starting with the head.
         """
+        self.lose = False
+        self.score = 0
+        
         #direction of motion of snake head, 1=up, 2=left, 3=down, 4=right
         self.direction = 4
         self.direction_changed = False
@@ -32,6 +34,7 @@ class SnakeGameLogic:
                              [head_start_point[0], head_start_point[1] - 1], 
                              [head_start_point[0], head_start_point[1] - 2]]
 
+        self.place_food_random()
         self.update()
         
     def move_snake(self):
@@ -88,31 +91,36 @@ class SnakeGameLogic:
         return head_coord, (row_idxs.astype(int), col_idxs.astype(int))
     
     def update(self):
-        #move snake and return True if it ate istelf
-        if self.move_snake():
-            return True
-        
-        #reset grid and replace snake and food
-        food_pos = np.where(self.grid == 3)
-        self.grid = np.zeros(self.grid_size)
-        self.grid[food_pos] = 3
-        head_coord, body_coords = self.get_snake_slice()
-        self.grid[head_coord] = 2
-        self.grid[body_coords] = 1
-         
-        #check if food was eaten and if so, replace it
-        if np.where(self.grid == 3)[0].size == 0:
-            self.ate_food = True
-            self.spawn_food()
-        
-        #allow direction change again after update
-        self.direction_changed = False
+        if not self.lose:
+            #move snake and return True if it ate istelf
+            if self.move_snake():
+                self.lose = True
+                return True
+            
+            #reset grid and replace snake and food
+            self.grid = np.zeros(self.grid_size)
+            self.grid[tuple(self.food_coord)] = 3
+            head_coord, body_coords = self.get_snake_slice()
+            self.grid[head_coord] = 2
+            self.grid[body_coords] = 1
+             
+            #check if food was eaten and if so, replace it
+            if np.where(self.grid == 3)[0].size == 0:
+                self.ate_food = True
+                self.score += 1
+                self.place_food_random()
+            
+            #allow direction change again after update
+            self.direction_changed = False
+        return False
     
-    def spawn_food(self):
+    def place_food_random(self):
         #assigns value of 3 to random empty grid position creating "food"
         zero_positions = np.where(self.grid == 0) 
-        rand_pos = zero_positions[np.random.randint(np.shape(zero_positions)[0])]
-        self.grid[(rand_pos[0], rand_pos[1])] = 3
+        rand_idx = np.random.randint(np.size(zero_positions[0]))
+        self.food_coord = [zero_positions[0][rand_idx], 
+                           zero_positions[1][rand_idx]]
+        self.grid[tuple(self.food_coord)] = 3
     
     def change_direction(self, direction):
         if direction == 'u':
@@ -138,3 +146,13 @@ class SnakeGameLogic:
         
     def print(self):
         print(self.grid)
+
+"""
+from time import sleep        
+
+snek = SnakeGameLogic((2, 10))
+for _ in range(1000):
+    snek.update()
+    snek.print()
+    sleep(0.5)
+"""
