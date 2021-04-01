@@ -4,7 +4,7 @@ import numpy as np
 from snake_game_logic import SnakeGameLogic
 
 class SnakeGameView(arcade.View):
-    def __init__(self, grid_size=(20, 30)):
+    def __init__(self, grid_size=(20, 20)):
         super().__init__()
         self.grid_size = grid_size
         

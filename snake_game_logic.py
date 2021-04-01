@@ -1,7 +1,7 @@
 import numpy as np
 
 class SnakeGameLogic:
-    def __init__(self, grid_size=(20, 30)):
+    def __init__(self, grid_size=(20, 20)):
         self.grid_size = grid_size
         self.grid = np.zeros(grid_size)
         self.ate_food = False
@@ -25,8 +25,8 @@ class SnakeGameLogic:
         self.lose = False
         self.score = 0
         
-        #direction of motion of snake head, 1=up, 2=left, 3=down, 4=right
-        self.direction = 4
+        #direction of motion of snake head, 0=up, 1=left, 2=down, 3=right
+        self.direction = 3
         self.direction_changed = False
         
         head_start_point = np.floor_divide(np.array(self.grid_size), 2).tolist()      
@@ -45,27 +45,51 @@ class SnakeGameLogic:
             self.ate_food = False
             
         new_head_pos = self.snake_coords[0][:]
-        if self.direction == 1:
+        #for boundary-less game
+        """
+        if self.direction == 0:
             if new_head_pos[0] == 0:
                 new_head_pos[0] = self.grid_size[0] - 1
             else:
                 new_head_pos[0] -= 1
-        elif self.direction == 2:
+        elif self.direction == 1:
             if new_head_pos[1] == 0:
                 new_head_pos[1] = self.grid_size[1] - 1
             else:
                 new_head_pos[1] -= 1
-        elif self.direction == 3:
+        elif self.direction == 2:
             if new_head_pos[0] == self.grid_size[0] - 1:
                 new_head_pos[0] = 0
             else:
                 new_head_pos[0] += 1
-        elif self.direction == 4:
+        elif self.direction == 3:
             if new_head_pos[1] == self.grid_size[1] - 1:
                 new_head_pos[1] = 0
             else:
                 new_head_pos[1] += 1
-            
+        """
+        
+        if self.direction == 0:
+            if new_head_pos[0] == 0:
+                return True
+            else:
+                new_head_pos[0] -= 1
+        elif self.direction == 1:
+            if new_head_pos[1] == 0:
+                return True
+            else:
+                new_head_pos[1] -= 1
+        elif self.direction == 2:
+            if new_head_pos[0] == self.grid_size[0] - 1:
+                return True
+            else:
+                new_head_pos[0] += 1
+        elif self.direction == 3:
+            if new_head_pos[1] == self.grid_size[1] - 1:
+                return True
+            else:
+                new_head_pos[1] += 1
+        
         #return True if snake ate itself
         for segment in self.snake_coords:
             if new_head_pos == segment:
@@ -124,13 +148,13 @@ class SnakeGameLogic:
     
     def change_direction(self, direction):
         if direction == 'u':
-            direction = 1
+            direction = 0
         elif direction == 'l':
-            direction = 2
+            direction = 1
         elif direction == 'd':
-            direction = 3
+            direction = 2
         elif direction == 'r':
-            direction = 4
+            direction = 3
             
         #do not allow direction to be reversed
         if abs(self.direction - direction) == 2:
@@ -143,6 +167,86 @@ class SnakeGameLogic:
         
         self.direction = direction
         self.direction_changed = True
+        
+    def get_flat_grid(self):
+        return self.grid.flatten().astype('int').tolist()
+
+    def get_state(self):
+        up = 0.0
+        left = 0.0
+        down = 0.0
+        right = 0.0
+    
+        #check for immediate danger
+        right_danger = 0.0
+        left_danger = 0.0
+        forward_danger = 0.0
+        head_coord = self.snake_coords[0]
+        if self.direction == 0:
+            up = 1.0
+            if head_coord[0] == 0:
+                forward_danger = 1.0
+            if head_coord[1] == 0:
+                left_danger = 1.0
+            if head_coord[1] == self.grid_size[1] - 1:
+                right_danger = 1.0
+
+        elif self.direction == 1:
+            left = 1.0
+            if head_coord[1] == 0:
+                forward_danger = 1.0
+            if head_coord[0] == 0:
+                right_danger = 1.0
+            if head_coord[0] == self.grid_size[0] - 1:
+                left_danger = 1.0
+
+        elif self.direction == 2:
+            down = 1.0
+            if head_coord[0] == self.grid_size[0] - 1:
+                forward_danger = 1.0
+            if head_coord[1] == 0:
+                right_danger = 1.0
+            if head_coord[1] == self.grid_size[1] - 1:
+                left_danger = 1.0
+
+        elif self.direction == 3:
+            right = 1.0
+            if head_coord[1] == self.grid_size[1] - 1:
+                forward_danger = 1.0
+            if head_coord[0] == 0:
+                left_danger = 1.0
+            if head_coord[0] == self.grid_size[0] - 1:
+                right_danger = 1.0
+                
+        food_up = 0.0
+        food_left = 0.0
+        food_down = 0.0
+        food_right = 0.0
+        if self.food_coord[0] < head_coord[0]:
+            food_up = 1.0
+        if self.food_coord[1] < head_coord[1]:
+            food_left = 1.0
+        if self.food_coord[0] > head_coord[0]:
+            food_down = 1.0
+        if self.food_coord[1] > head_coord[1]:
+            food_right = 1.0
+
+        return [up,
+                left,
+                down,
+                right,
+                forward_danger,
+                left_danger,
+                right_danger,
+                food_up,
+                food_left,
+                food_down,
+                food_right]
+    
+    def rl_agent_change_direction(self, direction):
+        self.change_direction(direction)
+        lose = self.update()
+        return self.get_state(), lose
         
     def print(self):
         print(self.grid)
