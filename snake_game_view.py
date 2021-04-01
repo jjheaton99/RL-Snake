@@ -8,41 +8,61 @@ tf.config.set_visible_devices([], 'GPU')
 
 from tensorforce.agents import Agent
 from snake_environment import SnakeEnvironment
-environment = SnakeEnvironment()
+env = SnakeEnvironment()
+
+epsilon_decay = {'type': 'decaying',
+                 'decay': 'exponential',
+                 'unit' : 'episodes',
+                 'num_steps': 10,
+                 'initial_value': 1.0,
+                 'decay_rate': 5e-2}
+
+dense_network = dict(type='auto',
+                     size=64,
+                     depth=4)
+
+conv_network = [dict(type='conv2d', size=32),
+                dict(type='flatten'),
+                dict(type='dense', size=64),
+                dict(type='dense', size=64)]
+
+agent_config = {
+    'agent': 'dqn',
+    'memory': 200000,
+    'batch_size': 25,
+    'network': dense_network,
+    'learning_rate': 1e-3,
+    'discount': 0.99,
+    'exploration': epsilon_decay,
+    'target_update_weight': 1.0,
+    }
 
 class SnakeGameView(arcade.View):
     """
     Implementation of the snake game logic using Arcade, including
     option to let trained DQN agent take over.
     """
-    def __init__(self, grid_size=(20, 20)):
+    def __init__(self, grid_size=(20, 20), network_type='dense'):
         super().__init__()
         self.grid_size = grid_size
+        self.network_type = network_type
         
         self.square_size = 30
-        self.w_width = grid_size[1] * self.square_size
-        self.w_height = grid_size[0] * self.square_size
+        self.w_width = (grid_size[1] + 2) * self.square_size 
+        self.w_height = (grid_size[0] + 2) * self.square_size
         self.window.set_size(self.w_width, self.w_height)
         
         self.snake_game_logic = SnakeGameLogic(grid_size)
         self.update_timestep = 0.1
         
-        self.agent = Agent.load('agents',
-                                'checkpoint',
-                                agent='dqn',
-                                batch_size=10,
-                                environment=environment,
-                                learning_rate=1e-3,
-                                network=dict(type='auto',
-                                             size=64,
-                                             depth=4),
-                                memory=10000,
-                                saver=dict(directory='agents',
-                                           frequency=10000))
+        self.agent = Agent.load(directory='agents/dense',
+                                filename='dqn_agent',
+                                environment=env,
+                                **agent_config)
         
         self.setup()
         
-        arcade.set_background_color(arcade.color.SKY_BLUE)
+        arcade.set_background_color(arcade.color.BLACK)
         
     def setup(self):
         self.snake_game_logic.reset()
@@ -54,31 +74,59 @@ class SnakeGameView(arcade.View):
     def on_draw(self):
         arcade.start_render()
         
+        arcade.draw_rectangle_filled(
+            self.w_width / 2, 
+            self.w_height / 2, 
+            self.w_width - 2 * self.square_size, 
+            self.w_height - 2 * self.square_size, 
+            arcade.color.SKY_BLUE)
+        
         head = True
         for coord in self.snake_game_logic.snake_coords:
             if head:
                 head = False
                 arcade.draw_rectangle_filled(
-                    coord[1] * self.square_size + self.square_size / 2.0, 
-                    self.w_height - coord[0] * self.square_size - self.square_size / 2.0, 
+                    (coord[1] + 1) * self.square_size + self.square_size / 2.0, 
+                    self.w_height - (coord[0] + 1) * self.square_size - self.square_size / 2.0, 
                     self.square_size, 
                     self.square_size, 
-                    arcade.color.RED_DEVIL)
+                    arcade.color.DESIRE)
             else:
                 arcade.draw_rectangle_filled(
-                    coord[1] * self.square_size + self.square_size / 2.0, 
-                    self.w_height - coord[0] * self.square_size - self.square_size / 2.0, 
+                    (coord[1] + 1) * self.square_size + self.square_size / 2.0, 
+                    self.w_height - (coord[0] + 1) * self.square_size - self.square_size / 2.0, 
                     self.square_size, 
                     self.square_size, 
-                    arcade.color.BLACK)
+                    arcade.color.HARVARD_CRIMSON)
         
         food_coord = self.snake_game_logic.food_coord
         arcade.draw_rectangle_filled(
-            food_coord[1] * self.square_size + self.square_size / 2.0, 
-            self.w_height - food_coord[0] * self.square_size - self.square_size / 2.0, 
+            (food_coord[1] + 1) * self.square_size + self.square_size / 2.0, 
+            self.w_height - (food_coord[0] + 1) * self.square_size - self.square_size / 2.0, 
             self.square_size, 
             self.square_size, 
-            arcade.color.GREEN)
+            arcade.color.BANGLADESH_GREEN)
+        
+        arcade.draw_text(
+            'Score: {}'.format(self.snake_game_logic.score), 
+            self.w_width / 2, 
+            self.square_size / 2,
+            arcade.color.WHITE,
+            font_size=20,
+            align="center",
+            anchor_x="center", 
+            anchor_y="center")
+        
+        if self.snake_game_logic.lose:
+            arcade.draw_text(
+                'Game over!', 
+                self.w_width / 2, 
+                self.w_height - self.square_size / 2,
+                arcade.color.WHITE,
+                font_size=20,
+                align="center",
+                anchor_x="center", 
+                anchor_y="center")
 
     def on_key_press(self, symbol, modifiers):    
         if symbol == arcade.key.W or symbol == arcade.key.UP:
@@ -106,7 +154,16 @@ class SnakeGameView(arcade.View):
             self.agent_playing = not self.agent_playing  
             
         if symbol == arcade.key.R:
-            self.setup()  
+            self.setup()
+            
+        if symbol == arcade.key.L and self.game_started:
+            self.update_timestep *= 0.9
+            
+        if symbol == arcade.key.J and self.game_started:
+            self.update_timestep /= 0.9
+            
+        if symbol == arcade.key.K:
+            self.update_timestep = 0.1
         
         if symbol == arcade.key.ESCAPE:
             arcade.close_window()
@@ -117,7 +174,7 @@ class SnakeGameView(arcade.View):
             while self.cumulative_time > self.update_timestep:
                 self.cumulative_time -= self.update_timestep
                 if self.agent_playing:
-                    action = self.agent.act(self.snake_game_logic.get_state('dense'))
+                    action = self.agent.act(self.snake_game_logic.get_state(self.network_type))
                     self.snake_game_logic.change_direction(action)
                     self.agent.observe()
                 self.snake_game_logic.update()

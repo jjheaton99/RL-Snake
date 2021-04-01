@@ -272,7 +272,7 @@ class SnakeGameLogic:
                     food_right]
         
         elif network_type == 'conv':
-            return np.expand_dims(self.grid, axis=2).tolist()
+            return np.expand_dims(self.grid * 85.0, axis=2).tolist()
         
         else:
             raise Exception('Invalid network type, should be dense or conv.')
