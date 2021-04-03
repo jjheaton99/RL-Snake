@@ -1,4 +1,4 @@
 # RL-Snake
 Deep reinforcement learning applied to the game Snake.
 
-![snake](https://media.giphy.com/media/Q6KN3Qxt1J5KXdTpa4/giphy.gif)
+![snake](https://media.giphy.com/media/dJ1parwVgm8NVCXO0Y/giphy.gif)
