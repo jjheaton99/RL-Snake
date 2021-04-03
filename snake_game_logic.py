@@ -24,6 +24,7 @@ class SnakeGameLogic:
         """
         self.lose = False
         self.score = 0
+        self.steps_since_ate = 0
         
         #direction of motion of snake head, 0=up, 1=left, 2=down, 3=right
         self.direction = 3
@@ -35,7 +36,12 @@ class SnakeGameLogic:
                              [head_start_point[0], head_start_point[1] - 2]]
 
         self.place_food_random()
+        self.stored_grids = None
         self.update()
+        self.stored_grids = [self.grid, 
+                             self.grid,
+                             self.grid,
+                             self.grid]
         
     def move_snake(self):
         #if snake ate food, end position is kept
@@ -121,6 +127,8 @@ class SnakeGameLogic:
                 self.lose = True
                 return True
             
+            self.steps_since_ate += 1
+            
             #reset grid and replace snake and food
             self.grid = np.zeros(self.grid_size)
             self.grid[tuple(self.food_coord)] = 3
@@ -132,10 +140,16 @@ class SnakeGameLogic:
             if np.where(self.grid == 3)[0].size == 0:
                 self.ate_food = True
                 self.score += 1
+                self.steps_since_ate = 0
                 self.place_food_random()
             
             #allow direction change again after update
             self.direction_changed = False
+            
+            #update stored grid values
+            if self.stored_grids is not None:
+                del self.stored_grids[-1]
+                self.stored_grids.insert(0, self.grid)
         return False
     
     def place_food_random(self):
@@ -168,114 +182,132 @@ class SnakeGameLogic:
         self.direction = direction
         self.direction_changed = True
         
+    def distance_to_food(self):
+        return np.sqrt((self.food_coord[0] - self.snake_coords[0][0])**2 + 
+                       (self.food_coord[1] - self.snake_coords[0][1])**2)
+        
     def get_flat_grid(self):
         return self.grid.flatten().astype('int').tolist()
+    
+    def get_stacked_stored_grids(self):
+        return np.stack(self.stored_grids, axis=2).astype('float').tolist()
+    
+    def get_state_info(self):
+        #direction of motion
+        up = 0.0
+        left = 0.0
+        down = 0.0
+        right = 0.0
+    
+        #check for immediate danger from snake body or boundary
+        right_danger = 0.0
+        left_danger = 0.0
+        forward_danger = 0.0
+        head_coord = self.snake_coords[0]
+        if self.direction == 0:
+            up = 1.0
+            if head_coord[0] == 0:
+                forward_danger = 1.0
+            elif self.grid[head_coord[0] - 1, head_coord[1]] == 1:
+                forward_danger = 1.0
+            if head_coord[1] == 0:
+                left_danger = 1.0
+            elif self.grid[head_coord[0], head_coord[1] - 1] == 1:
+                left_danger = 1.0
+            if head_coord[1] == self.grid_size[1] - 1:
+                right_danger = 1.0
+            elif self.grid[head_coord[0], head_coord[1] + 1] == 1:
+                right_danger = 1.0
+            
+        elif self.direction == 1:
+            left = 1.0
+            if head_coord[1] == 0:
+                forward_danger = 1.0
+            elif self.grid[head_coord[0], head_coord[1] - 1] == 1:
+                forward_danger = 1.0
+            if head_coord[0] == 0:
+                right_danger = 1.0
+            elif self.grid[head_coord[0] - 1, head_coord[1]] == 1:
+                right_danger = 1.0
+            if head_coord[0] == self.grid_size[0] - 1:
+                left_danger = 1.0
+            elif self.grid[head_coord[0] + 1, head_coord[1]] == 1:
+                left_danger = 1.0
 
+        elif self.direction == 2:
+            down = 1.0
+            if head_coord[0] == self.grid_size[0] - 1:
+                forward_danger = 1.0
+            elif self.grid[head_coord[0] + 1, head_coord[1]] == 1:
+                forward_danger = 1.0
+            if head_coord[1] == 0:
+                right_danger = 1.0
+            elif self.grid[head_coord[0], head_coord[1] - 1] == 1:
+                right_danger = 1.0
+            if head_coord[1] == self.grid_size[1] - 1:
+                left_danger = 1.0
+            elif self.grid[head_coord[0], head_coord[1] + 1] == 1:
+                left_danger = 1.0
+
+        elif self.direction == 3:
+            right = 1.0
+            if head_coord[1] == self.grid_size[1] - 1:
+                forward_danger = 1.0
+            elif self.grid[head_coord[0], head_coord[1] + 1] == 1:
+                forward_danger = 1.0
+            if head_coord[0] == 0:
+                left_danger = 1.0
+            elif self.grid[head_coord[0] - 1, head_coord[1]] == 1:
+                left_danger = 1.0
+            if head_coord[0] == self.grid_size[0] - 1:
+                right_danger = 1.0
+            elif self.grid[head_coord[0] + 1, head_coord[1]] == 1:
+                right_danger = 1.0
+        
+        #check direction of food
+        food_up = 0.0
+        food_left = 0.0
+        food_down = 0.0
+        food_right = 0.0
+        if self.food_coord[0] < head_coord[0]:
+            food_up = 1.0
+        if self.food_coord[1] < head_coord[1]:
+            food_left = 1.0
+        if self.food_coord[0] > head_coord[0]:
+            food_down = 1.0
+        if self.food_coord[1] > head_coord[1]:
+            food_right = 1.0
+
+        return [up,
+                left,
+                down,
+                right,
+                forward_danger,
+                left_danger,
+                right_danger,
+                food_up,
+                food_left,
+                food_down,
+                food_right]
+    
     def get_state(self, network_type):
         #encodes state of the game for RL algorithm input for either dense or conv networks
         if network_type == 'dense':
-            #direction of motion
-            up = 0.0
-            left = 0.0
-            down = 0.0
-            right = 0.0
-        
-            #check for immediate danger from snake body or boundary
-            right_danger = 0.0
-            left_danger = 0.0
-            forward_danger = 0.0
-            head_coord = self.snake_coords[0]
-            if self.direction == 0:
-                up = 1.0
-                if head_coord[0] == 0:
-                    forward_danger = 1.0
-                elif self.grid[head_coord[0] - 1, head_coord[1]] == 1:
-                    forward_danger = 1.0
-                if head_coord[1] == 0:
-                    left_danger = 1.0
-                elif self.grid[head_coord[0], head_coord[1] - 1] == 1:
-                    left_danger = 1.0
-                if head_coord[1] == self.grid_size[1] - 1:
-                    right_danger = 1.0
-                elif self.grid[head_coord[0], head_coord[1] + 1] == 1:
-                    right_danger = 1.0
-                
-            elif self.direction == 1:
-                left = 1.0
-                if head_coord[1] == 0:
-                    forward_danger = 1.0
-                elif self.grid[head_coord[0], head_coord[1] - 1] == 1:
-                    forward_danger = 1.0
-                if head_coord[0] == 0:
-                    right_danger = 1.0
-                elif self.grid[head_coord[0] - 1, head_coord[1]] == 1:
-                    right_danger = 1.0
-                if head_coord[0] == self.grid_size[0] - 1:
-                    left_danger = 1.0
-                elif self.grid[head_coord[0] + 1, head_coord[1]] == 1:
-                    left_danger = 1.0
-    
-            elif self.direction == 2:
-                down = 1.0
-                if head_coord[0] == self.grid_size[0] - 1:
-                    forward_danger = 1.0
-                elif self.grid[head_coord[0] + 1, head_coord[1]] == 1:
-                    forward_danger = 1.0
-                if head_coord[1] == 0:
-                    right_danger = 1.0
-                elif self.grid[head_coord[0], head_coord[1] - 1] == 1:
-                    right_danger = 1.0
-                if head_coord[1] == self.grid_size[1] - 1:
-                    left_danger = 1.0
-                elif self.grid[head_coord[0], head_coord[1] + 1] == 1:
-                    left_danger = 1.0
-    
-            elif self.direction == 3:
-                right = 1.0
-                if head_coord[1] == self.grid_size[1] - 1:
-                    forward_danger = 1.0
-                elif self.grid[head_coord[0], head_coord[1] + 1] == 1:
-                    forward_danger = 1.0
-                if head_coord[0] == 0:
-                    left_danger = 1.0
-                elif self.grid[head_coord[0] - 1, head_coord[1]] == 1:
-                    left_danger = 1.0
-                if head_coord[0] == self.grid_size[0] - 1:
-                    right_danger = 1.0
-                elif self.grid[head_coord[0] + 1, head_coord[1]] == 1:
-                    right_danger = 1.0
-            
-            #check direction of food
-            food_up = 0.0
-            food_left = 0.0
-            food_down = 0.0
-            food_right = 0.0
-            if self.food_coord[0] < head_coord[0]:
-                food_up = 1.0
-            if self.food_coord[1] < head_coord[1]:
-                food_left = 1.0
-            if self.food_coord[0] > head_coord[0]:
-                food_down = 1.0
-            if self.food_coord[1] > head_coord[1]:
-                food_right = 1.0
-    
-            return [up,
-                    left,
-                    down,
-                    right,
-                    forward_danger,
-                    left_danger,
-                    right_danger,
-                    food_up,
-                    food_left,
-                    food_down,
-                    food_right]
+            return self.get_state_info()
         
         elif network_type == 'conv':
-            return np.expand_dims(self.grid * 85.0, axis=2).tolist()
+            return np.expand_dims(self.grid.astype('float'), axis=2).tolist()
+        
+        elif network_type == 'multi':
+            return dict(image_input=self.get_stacked_stored_grids(), 
+                        info_input=self.get_state_info())
+        
+        #elif network_type == 'multi':
+        #    return dict(image_input=np.expand_dims(self.grid.astype('float'), axis=2).tolist(), 
+        #                info_input=self.get_state_info())
         
         else:
-            raise Exception('Invalid network type, should be dense or conv.')
+            raise Exception('Invalid network type.')
     
     def rl_agent_change_direction(self, direction):
         self.change_direction(direction)
@@ -283,13 +315,3 @@ class SnakeGameLogic:
         
     def print(self):
         print(self.grid)
-
-"""
-from time import sleep        
-
-snek = SnakeGameLogic((2, 10))
-for _ in range(1000):
-    snek.update()
-    snek.print()
-    sleep(0.5)
-"""

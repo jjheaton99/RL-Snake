@@ -7,6 +7,10 @@ import tensorflow as tf
 tf.config.set_visible_devices([], 'GPU')
 
 from tensorforce.agents import Agent
+import train_agent
+
+"""
+from tensorforce.agents import Agent
 from snake_environment import SnakeEnvironment
 env = SnakeEnvironment()
 
@@ -36,6 +40,7 @@ agent_config = {
     'exploration': epsilon_decay,
     'target_update_weight': 1.0,
     }
+"""
 
 class SnakeGameView(arcade.View):
     """
@@ -55,10 +60,26 @@ class SnakeGameView(arcade.View):
         self.snake_game_logic = SnakeGameLogic(grid_size)
         self.update_timestep = 0.1
         
-        self.agent = Agent.load(directory='agents/dense',
-                                filename='dqn_agent',
-                                environment=env,
-                                **agent_config)
+        if network_type == 'dense':
+            self.agent = Agent.load(directory='agents/dense',
+                                    filename='dqn_agent',
+                                    environment=train_agent.dense_env,
+                                    **train_agent.dense_config)
+            
+        elif network_type == 'conv':
+            self.agent = Agent.load(directory='agents/conv',
+                                    filename='dqn_agent',
+                                    environment=train_agent.conv_env,
+                                    **train_agent.conv_config)
+            
+        elif network_type == 'multi':
+            self.agent = Agent.load(directory='agents/multi_ddqn',
+                                    filename='dqn_agent',
+                                    environment=train_agent.multi_env,
+                                    **train_agent.multi_config)
+            
+        else:
+            raise Exception('Invalid network type.')
         
         self.setup()
         
