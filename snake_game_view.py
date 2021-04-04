@@ -70,6 +70,8 @@ class SnakeGameView(arcade.View):
             arcade.color.SKY_BLUE)
         
         head = True
+        colour_counter = 1
+        colour_factor = 255 / (self.snake_game_logic.score + 3)
         for coord in self.snake_game_logic.snake_coords:
             if head:
                 head = False
@@ -78,14 +80,15 @@ class SnakeGameView(arcade.View):
                     self.w_height - (coord[0] + 1) * self.square_size - self.square_size / 2.0, 
                     self.square_size, 
                     self.square_size, 
-                    arcade.color.DESIRE)
+                    (255, 0, 0))
             else:
                 arcade.draw_rectangle_filled(
                     (coord[1] + 1) * self.square_size + self.square_size / 2.0, 
                     self.w_height - (coord[0] + 1) * self.square_size - self.square_size / 2.0, 
                     self.square_size, 
                     self.square_size, 
-                    arcade.color.HARVARD_CRIMSON)
+                    (255 - colour_factor * colour_counter, 0, 0))
+                colour_counter += 1
         
         food_coord = self.snake_game_logic.food_coord
         arcade.draw_rectangle_filled(
