@@ -5,7 +5,7 @@ Tensorforce library.
 A fully trained agent playing the Arcade implementation is shown below.
 ![snake](https://media.giphy.com/media/dJ1parwVgm8NVCXO0Y/giphy.gif)
 
-## Training an agent using the Double Deep-Q Network (DDQN) algorithm
+## Training an agent using the Double Deep Q Network (DDQN) algorithm
 After some experimentation, I found the DDQN model to work the best. The Q network takes in two inputs. The game grids of the current timestep and previous three are 
 stacked together and passed through four convolutional layers followed by a fully connected layer. In addition, a size 11 binary input vector containing information about
 the direction of motion, position of food and immediate collision dangers is passed through two fully connected layers with the output being concatenated with the output
