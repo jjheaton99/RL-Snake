@@ -52,9 +52,6 @@ class SnakeEnvironment(Environment):
         
         reward = reward - time_reward + distance_reward
         
-        #if time_reward > 0.0:
-         #   print('dist - time: {}'.format(distance_reward - time_reward))
-        
         #clip reward in range [-1, 1]
         if abs(reward) > 1.0:
             reward /= abs(reward)

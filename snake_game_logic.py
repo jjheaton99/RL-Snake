@@ -302,10 +302,6 @@ class SnakeGameLogic:
             return dict(image_input=self.get_stacked_stored_grids(), 
                         info_input=self.get_state_info())
         
-        #elif network_type == 'multi':
-        #    return dict(image_input=np.expand_dims(self.grid.astype('float'), axis=2).tolist(), 
-        #                info_input=self.get_state_info())
-        
         else:
             raise Exception('Invalid network type.')
     

@@ -9,39 +9,6 @@ tf.config.set_visible_devices([], 'GPU')
 from tensorforce.agents import Agent
 import train_agent
 
-"""
-from tensorforce.agents import Agent
-from snake_environment import SnakeEnvironment
-env = SnakeEnvironment()
-
-epsilon_decay = {'type': 'decaying',
-                 'decay': 'exponential',
-                 'unit' : 'episodes',
-                 'num_steps': 10,
-                 'initial_value': 1.0,
-                 'decay_rate': 5e-2}
-
-dense_network = dict(type='auto',
-                     size=64,
-                     depth=4)
-
-conv_network = [dict(type='conv2d', size=32),
-                dict(type='flatten'),
-                dict(type='dense', size=64),
-                dict(type='dense', size=64)]
-
-agent_config = {
-    'agent': 'dqn',
-    'memory': 200000,
-    'batch_size': 25,
-    'network': dense_network,
-    'learning_rate': 1e-3,
-    'discount': 0.99,
-    'exploration': epsilon_decay,
-    'target_update_weight': 1.0,
-    }
-"""
-
 class SnakeGameView(arcade.View):
     """
     Implementation of the snake game logic using Arcade, including

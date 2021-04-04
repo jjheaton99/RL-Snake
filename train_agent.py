@@ -83,45 +83,36 @@ multi_config = {'agent': 'dqn',
                'target_update_weight': 1.0}
 
 multi_ddqn_config = {'agent': 'ddqn',
-               'memory': 200000,
-               'batch_size': 25,
-               'network': multi_network,
-               'learning_rate': 1e-3,
-               'discount': 0.99,
-               'exploration': epsilon_decay,
-               'target_update_weight': 1.0}
+                     'memory': 200000,
+                     'batch_size': 25,
+                     'network': multi_network,
+                     'learning_rate': 1e-3,
+                     'discount': 0.99,
+                     'exploration': epsilon_decay,
+                     'target_update_weight': 1.0}
                    
 if __name__ == '__main__':
-    """
-    agent = Agent.create(agent=multi_config,
-                         environment=multi_env)
+    #agent = Agent.create(agent=multi_ddqn_config,
+    #                     environment=multi_env)
+    
+    agent = Agent.load(directory='agents/multi_ddqn',
+                       filename='dqn_agent',
+                       environment=multi_env,
+                       **multi_config)
     
     runner = Runner(agent=agent,
                     environment=multi_env)
 
-    runner.run(num_episodes=10000)
-    runner.agent.save(directory='agents/multi', filename='dqn_agent')
+    runner.run(num_episodes=1000, evaluation=True)
+    #runner.agent.save(directory='agents/multi_ddqn', filename='dqn_agent')
     
     rewards = np.asarray(runner.episode_rewards)
     episode_lengths = np.asarray(runner.episode_timesteps)
     
-    np.savetxt('agents/multi/rewards.txt', rewards)
-    np.savetxt('agents/multi/episode_lengths.txt', episode_lengths)
-    """
+    np.savetxt('agents/multi_ddqn/rewards_eval.txt', rewards)
+    np.savetxt('agents/multi_ddqn/episode_lengths_eval.txt', episode_lengths)
     
-    agent = Agent.create(agent=multi_ddqn_config,
-                         environment=multi_env)
-    
-    runner = Runner(agent=agent,
-                    environment=multi_env)
-
-    runner.run(num_episodes=10000)
-    runner.agent.save(directory='agents/multi_ddqn', filename='dqn_agent')
-    
-    rewards = np.asarray(runner.episode_rewards)
-    episode_lengths = np.asarray(runner.episode_timesteps)
-    
-    np.savetxt('agents/multi_ddqn/rewards.txt', rewards)
-    np.savetxt('agents/multi_ddqn/episode_lengths.txt', episode_lengths)
+    print(np.mean(rewards))
+    print(np.mean(episode_lengths))
     
     runner.close()
